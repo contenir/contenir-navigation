@@ -27,7 +27,8 @@ final class Version20261023000300CreateNavigationRevisionTest extends TestCase
                     . ' `items` JSON NOT NULL,'
                     . ' `note` VARCHAR(255) NULL,'
                     . ' `created` DATETIME NOT NULL,'
-                    . ' `created_by` INT UNSIGNED NOT NULL,'
+                    . ' `created_by` VARCHAR(64) NULL,'
+                    . ' `created_by_name` VARCHAR(255) NULL,'
                     . ' PRIMARY KEY (`navigation_revision_id`),'
                     . ' KEY `navigation_revision_history` (`navigation_id`, `created`)'
                     . ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
@@ -47,7 +48,8 @@ final class Version20261023000300CreateNavigationRevisionTest extends TestCase
                     . ' "items" TEXT NOT NULL,'
                     . ' "note" VARCHAR(255) NULL,'
                     . ' "created" DATETIME NOT NULL,'
-                    . ' "created_by" INTEGER NOT NULL'
+                    . ' "created_by" VARCHAR(64) NULL,'
+                    . ' "created_by_name" VARCHAR(255) NULL'
                     . ')',
                 'CREATE INDEX IF NOT EXISTS "navigation_revision_history" ON "navigation_revision" ("navigation_id", "created")',
             ],

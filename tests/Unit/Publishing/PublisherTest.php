@@ -7,6 +7,7 @@ namespace Contenir\Navigation\Tests\Unit\Publishing;
 use Contenir\Navigation\Exception\NotFoundException;
 use Contenir\Navigation\Menu\Navigation;
 use Contenir\Navigation\Menu\Node;
+use Contenir\Navigation\Menu\PublishedBy;
 use Contenir\Navigation\Menu\Revision;
 use Contenir\Navigation\Publishing\LiveNavigation;
 use Contenir\Navigation\Publishing\Publisher;
@@ -30,6 +31,8 @@ final class PublisherTest extends TestCase
 
     private Publisher $publisher;
 
+    private PublishedBy $ann;
+
     #[Test]
     public function discardingAMenuNeverPublishedChangesNothing(): void
     {
@@ -42,7 +45,7 @@ final class PublisherTest extends TestCase
     #[Test]
     public function discardingReturnsTheDraftToTheLiveRevision(): void
     {
-        $this->publisher->publish(1, 7);
+        $this->publisher->publish(1, $this->ann);
         $this->repository->items[1] = [ItemFactory::text(1, 'Renamed'), ItemFactory::text(2, 'Added')];
 
         static::assertSame(
@@ -54,7 +57,7 @@ final class PublisherTest extends TestCase
     #[Test]
     public function eachChangeRunsInOneTransaction(): void
     {
-        $revision = $this->publisher->publish(1, 7);
+        $revision = $this->publisher->publish(1, $this->ann);
         $this->publisher->discard(1);
         $this->publisher->restore((int) $revision->id);
 
@@ -70,7 +73,7 @@ final class PublisherTest extends TestCase
     #[Test]
     public function liveIsTheMenuWithItsLiveRevision(): void
     {
-        $revision = $this->publisher->publish(1, 7);
+        $revision = $this->publisher->publish(1, $this->ann);
 
         static::assertEquals(
             new LiveNavigation($this->repository->navigation(1), $revision),
@@ -83,7 +86,7 @@ final class PublisherTest extends TestCase
     {
         $this->expectException(NotFoundException::class);
 
-        $this->publisher->publish(9, 7);
+        $this->publisher->publish(9, $this->ann);
     }
 
     #[Test]
@@ -91,11 +94,18 @@ final class PublisherTest extends TestCase
     {
         $this->clock->set('2026-10-23 10:30:00');
 
-        $revision = $this->publisher->publish(1, 7, 'Added Shop');
+        $revision = $this->publisher->publish(1, $this->ann, 'Added Shop');
 
         static::assertEquals(
             [
-                new Revision(1, [new Node(ItemFactory::text(1, 'Shop'))], $this->clock->now(), 7, 'Added Shop', 1),
+                new Revision(
+                    1,
+                    [new Node(ItemFactory::text(1, 'Shop'))],
+                    $this->clock->now(),
+                    $this->ann,
+                    'Added Shop',
+                    1,
+                ),
                 1,
             ],
             [$revision, $this->repository->navigation(1)->revisionId],
@@ -105,9 +115,9 @@ final class PublisherTest extends TestCase
     #[Test]
     public function restoringCopiesARevisionIntoTheDraft(): void
     {
-        $first                      = $this->publisher->publish(1, 7);
+        $first                      = $this->publisher->publish(1, $this->ann);
         $this->repository->items[1] = [ItemFactory::text(5, 'Later')];
-        $this->publisher->publish(1, 7);
+        $this->publisher->publish(1, $this->ann);
 
         $this->publisher->restore((int) $first->id);
 
@@ -125,7 +135,7 @@ final class PublisherTest extends TestCase
     #[Test]
     public function unpublishedChangesCountsTheDraftAgainstTheLiveRevision(): void
     {
-        $this->publisher->publish(1, 7);
+        $this->publisher->publish(1, $this->ann);
         $this->repository->items[1] = [ItemFactory::text(1, 'Renamed'), ItemFactory::text(2, 'Added')];
 
         static::assertSame(2, $this->publisher->unpublishedChanges(1));
@@ -137,6 +147,7 @@ final class PublisherTest extends TestCase
         $this->repository  = new InMemoryNavigationRepository();
         $this->transaction = new RecordingTransaction();
         $this->clock       = new MutableClock('2026-10-23 09:00:00');
+        $this->ann         = new PublishedBy(7, 'Ann Editor');
         $this->publisher   = new Publisher($this->repository, $this->transaction, $this->clock);
         $this->repository->saveNavigation(new Navigation('header', 'Header'));
         $this->repository->items[1] = [ItemFactory::text(1, 'Shop')];

@@ -9,6 +9,7 @@ use Contenir\Navigation\Link\RecordTarget;
 use Contenir\Navigation\Menu\Item;
 use Contenir\Navigation\Menu\Navigation;
 use Contenir\Navigation\Menu\Node;
+use Contenir\Navigation\Menu\PublishedBy;
 use Contenir\Navigation\Publishing\Publisher;
 use Contenir\Navigation\Storage\PhpDbNavigationRepository;
 use Contenir\Navigation\Storage\Transaction;
@@ -40,7 +41,7 @@ final class PublisherTest extends TestCase
     #[Test]
     public function discardingBringsBackTheItemsAsTheyWerePublished(): void
     {
-        $this->publisher->publish($this->menu, 1);
+        $this->publisher->publish($this->menu, new PublishedBy(1, 'Ann Editor'));
         $shop = $this->repository->items($this->menu)[0];
         $this->repository->saveItem($shop->withPresentation('Renamed'));
         $this->repository->saveItem(Item::text('Added')->withPlacement($this->menu, null, 1));
@@ -55,7 +56,7 @@ final class PublisherTest extends TestCase
     {
         $failure = null;
         try {
-            $this->publisher->publish(99, 1);
+            $this->publisher->publish(99);
         } catch (NotFoundException $caught) {
             $failure = $caught->getMessage();
         }
@@ -66,7 +67,7 @@ final class PublisherTest extends TestCase
     #[Test]
     public function theSiteReadsThePublishedTreeNotTheDraft(): void
     {
-        $this->publisher->publish($this->menu, 1, 'First menu');
+        $this->publisher->publish($this->menu, new PublishedBy(1, 'Ann Editor'), 'First menu');
         $this->repository->saveItem(Item::text('Draft only')->withPlacement($this->menu, null, 5));
 
         $live  = $this->publisher->live('header');
