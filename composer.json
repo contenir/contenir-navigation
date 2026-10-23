@@ -1,0 +1,90 @@
+{
+    "name": "contenir/contenir-navigation",
+    "description": "Managed site navigation for Contenir CMS: menus of nested items linking to records or URLs, edited as a draft and published as revisions. Framework free: PSR-11 and PSR-20, stored with php-db on MySQL or SQLite.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "contenir",
+        "cms",
+        "navigation",
+        "menu"
+    ],
+    "homepage": "https://contenir.com.au",
+    "support": {
+        "issues": "https://github.com/contenir/contenir-navigation/issues",
+        "source": "https://github.com/contenir/contenir-navigation"
+    },
+    "require": {
+        "php": "~8.3.0 || ~8.4.0 || ~8.5.0",
+        "ext-dom": "*",
+        "ext-json": "*",
+        "ext-mbstring": "*",
+        "peptolab/phpdb-migration": "^0.2",
+        "php-db/phpdb": "^0.6.0",
+        "psr/clock": "^1.0",
+        "psr/container": "^1.1 || ^2.0"
+    },
+    "require-dev": {
+        "contenir/contenir-qa-tools": "0.1.x-dev",
+        "infection/infection": "^0.34.1",
+        "php-db/phpdb-mysql": "0.5.x-dev",
+        "php-db/phpdb-sqlite": "0.3.x-dev",
+        "phpunit/phpunit": "^11.5.42"
+    },
+    "autoload": {
+        "psr-4": {
+            "Contenir\\Navigation\\": "src/",
+            "Contenir\\Navigation\\Schema\\": "schema/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Contenir\\Navigation\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "check": [
+            "@cs-check",
+            "@static-analysis",
+            "@test",
+            "@test-integration",
+            "@mutation-test"
+        ],
+        "cs-check": [
+            "mago format --check",
+            "mago lint"
+        ],
+        "cs-fix": [
+            "mago format",
+            "mago lint --fix"
+        ],
+        "static-analysis": "mago analyze",
+        "test": "phpunit --colors=always --testsuite unit",
+        "test-integration": [
+            "phpunit --colors=always --testsuite integration",
+            "@putenv CONTENIR_TEST_DB_PLATFORM=mysql",
+            "phpunit --colors=always --testsuite integration"
+        ],
+        "test-coverage": "@php -d pcov.directory=. -d pcov.exclude=#/vendor/# vendor/bin/phpunit --colors=always --coverage-clover clover.xml",
+        "mutation-test": "infection"
+    },
+    "config": {
+        "platform": {
+            "php": "8.3.99"
+        },
+        "sort-packages": true,
+        "allow-plugins": {
+            "infection/extension-installer": true
+        }
+    },
+    "extra": {
+        "laminas": {
+            "config-provider": "Contenir\\Navigation\\ConfigProvider"
+        },
+        "branch-alias": {
+            "dev-main": "0.1.x-dev"
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
