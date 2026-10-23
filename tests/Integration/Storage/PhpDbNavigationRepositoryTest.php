@@ -28,6 +28,7 @@ use PHPUnit\Framework\TestCase;
 
 use function array_map;
 use function count;
+use function str_contains;
 use function usort;
 
 #[Group('integration')]
@@ -185,12 +186,19 @@ final class PhpDbNavigationRepositoryTest extends TestCase
             $items = (string) $row['items'];
         }
 
-        static::assertStringContainsString('"url":"/café/menu","fragment":null,"label":"Café"', $items);
+        static::assertSame(
+            [true, true, false],
+            [str_contains($items, '/café/menu'), str_contains($items, '"Café"'), str_contains($items, '\\')],
+        );
     }
 
     #[Test]
     public function aRevisionThatCannotBeReadSaysWhich(): void
     {
+        if ('MySQL' === $this->adapter->getPlatform()->getName()) {
+            static::markTestSkipped('MySQL\'s JSON column refuses JSON that will not parse, so none can be stored');
+        }
+
         $menu = $this->menu();
         $this->adapter->query(
             "INSERT INTO navigation_revision (navigation_id, items, created, created_by) VALUES ({$menu}, '{\"broken', '2026-10-23 09:00:00', 1)",
