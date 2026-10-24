@@ -14,6 +14,7 @@ use Contenir\Navigation\Menu\Item;
 use Contenir\Navigation\Menu\ItemKind;
 use Contenir\Navigation\Menu\Navigation;
 use Contenir\Navigation\Menu\Node;
+use Contenir\Navigation\Menu\PublishedBy;
 use Contenir\Navigation\Menu\Revision;
 use Contenir\Navigation\Menu\Tree;
 use Contenir\Navigation\Storage\PhpDbNavigationRepository;
@@ -155,8 +156,8 @@ final class PhpDbNavigationRepositoryTest extends TestCase
     {
         $header = $this->menu();
         $footer = $this->menu('footer');
-        $this->repository->addRevision(new Revision($header, [], $this->clock->now(), 1, 'Header'));
-        $second = $this->repository->addRevision(new Revision($footer, [], $this->clock->now(), 1, 'Footer'));
+        $this->repository->addRevision(new Revision($header, [], $this->clock->now(), null, 'Header'));
+        $second = $this->repository->addRevision(new Revision($footer, [], $this->clock->now(), null, 'Footer'));
 
         static::assertSame(
             ['Footer', ['Header']],
@@ -178,7 +179,6 @@ final class PhpDbNavigationRepositoryTest extends TestCase
             $menu,
             [new Node(Item::url(Url::parse('/café/menu'), 'Café'))],
             $this->clock->now(),
-            1,
         ));
 
         $items = '';
@@ -218,7 +218,7 @@ final class PhpDbNavigationRepositoryTest extends TestCase
         $this->expectExceptionMessage('Malformed UTF-8');
 
         $this->repository->addRevision(
-            new Revision($this->menu(), [new Node(Item::text("\xB1\x31"))], $this->clock->now(), 1),
+            new Revision($this->menu(), [new Node(Item::text("\xB1\x31"))], $this->clock->now(), null),
         );
     }
 
@@ -271,6 +271,18 @@ final class PhpDbNavigationRepositoryTest extends TestCase
             ],
             $failures,
         );
+    }
+
+    #[Test]
+    public function aRevisionWithAPublisherIdButNoNameNamesNoPublisher(): void
+    {
+        $menu = $this->menu();
+        $this->adapter->query(
+            "INSERT INTO navigation_revision (navigation_id, items, created, created_by) VALUES ({$menu}, '[]', '2026-10-23 09:00:00', '3')",
+            Adapter::QUERY_MODE_EXECUTE,
+        );
+
+        static::assertNull($this->repository->revision(1)->publishedBy);
     }
 
     #[Test]
@@ -332,7 +344,7 @@ final class PhpDbNavigationRepositoryTest extends TestCase
     {
         $header   = $this->menu();
         $footer   = $this->menu('footer');
-        $revision = $this->repository->addRevision(new Revision($header, [], $this->clock->now(), 1));
+        $revision = $this->repository->addRevision(new Revision($header, [], $this->clock->now(), null));
         $this->clock->advance(60);
 
         $this->repository->saveNavigation(new Navigation('header', 'Renamed', id: $header));
@@ -386,7 +398,7 @@ final class PhpDbNavigationRepositoryTest extends TestCase
     {
         $menu = $this->menu();
         $this->repository->saveItem(Item::text('Shop')->withPlacement($menu, null, 0));
-        $this->repository->addRevision(new Revision($menu, [], $this->clock->now(), 1));
+        $this->repository->addRevision(new Revision($menu, [], $this->clock->now(), null));
 
         $this->repository->deleteNavigation($menu);
 
@@ -403,7 +415,7 @@ final class PhpDbNavigationRepositoryTest extends TestCase
         $header = $this->menu();
         $footer = $this->menu('footer');
         $this->add($footer, 'Footer item');
-        $this->repository->addRevision(new Revision($footer, [], $this->clock->now(), 1));
+        $this->repository->addRevision(new Revision($footer, [], $this->clock->now(), null));
 
         $this->repository->deleteNavigation($header);
 
@@ -653,10 +665,10 @@ final class PhpDbNavigationRepositoryTest extends TestCase
     {
         $menu = $this->menu();
         $this->repository->addRevision(
-            new Revision($menu, [], new DateTimeImmutable('2026-10-23 12:00:00'), 1, 'Later'),
+            new Revision($menu, [], new DateTimeImmutable('2026-10-23 12:00:00'), null, 'Later'),
         );
         $this->repository->addRevision(
-            new Revision($menu, [], new DateTimeImmutable('2026-10-23 08:00:00'), 1, 'Earlier'),
+            new Revision($menu, [], new DateTimeImmutable('2026-10-23 08:00:00'), null, 'Earlier'),
         );
 
         static::assertSame(
@@ -671,18 +683,27 @@ final class PhpDbNavigationRepositoryTest extends TestCase
         $menu  = $this->menu();
         $item  = $this->add($menu, 'Shop');
         $nodes = Tree::build($this->repository->items($menu));
-        $first = $this->repository->addRevision(new Revision($menu, $nodes, $this->clock->now(), 3, 'First'));
+        $first = $this->repository->addRevision(
+            new Revision($menu, $nodes, $this->clock->now(), new PublishedBy(3, 'Ann Editor'), 'First'),
+        );
         $this->clock->advance(60);
-        $second = $this->repository->addRevision(new Revision($menu, [], $this->clock->now(), 4));
+        $second = $this->repository->addRevision(
+            new Revision($menu, [], $this->clock->now(), new PublishedBy('u-4', 'Bo Editor')),
+        );
 
         static::assertEquals(
             [
-                [[$second->id, null, 4], [$first->id, 'First', 3]],
+                [[$second->id, null, 'u-4', 'Bo Editor'], [$first->id, 'First', '3', 'Ann Editor']],
                 [new Node(new Item(ItemKind::Text, label: 'Shop', id: $item->id, navigationId: $menu))],
             ],
             [
                 array_map(
-                    static fn(Revision $revision): array => [$revision->id, $revision->note, $revision->createdBy],
+                    static fn(Revision $revision): array => [
+                        $revision->id,
+                        $revision->note,
+                        $revision->publishedBy?->id,
+                        $revision->publishedBy?->name,
+                    ],
                     $this->repository->revisions($menu),
                 ),
                 $this->repository->revision((int) $first->id)->nodes,
@@ -723,7 +744,7 @@ final class PhpDbNavigationRepositoryTest extends TestCase
     public function theLiveRevisionIsTheOneSetForTheMenu(): void
     {
         $menu     = $this->menu();
-        $revision = $this->repository->addRevision(new Revision($menu, [], $this->clock->now(), 1));
+        $revision = $this->repository->addRevision(new Revision($menu, [], $this->clock->now(), null));
 
         $before = $this->repository->liveRevisionId('header');
         $this->repository->setLiveRevision($menu, (int) $revision->id);

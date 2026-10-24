@@ -44,7 +44,7 @@ The migrations in `schema/` create three tables in the site's database. `ConfigP
 |---|---|
 | `navigation` | One row per menu: its handle, title, description, order, live revision and when its draft last changed |
 | `navigation_item` | One row per item of a menu's draft: its parent, position, link, label, HTML, drawing and active switch |
-| `navigation_revision` | One row per publish: the whole item tree as JSON, a note, when and by whom |
+| `navigation_revision` | One row per publish: the whole item tree as JSON, a note, when, and the publisher's id and name |
 
 ## Usage
 
@@ -55,6 +55,7 @@ use Contenir\Navigation\Link\RecordTarget;
 use Contenir\Navigation\Link\Url;
 use Contenir\Navigation\Menu\Item;
 use Contenir\Navigation\Menu\Navigation;
+use Contenir\Navigation\Menu\PublishedBy;
 
 $menu = $repository->saveNavigation(new Navigation('header', 'Header', 'Across the top of every page'));
 
@@ -63,7 +64,7 @@ $repository->saveItem(Item::url(Url::parse('hello@example.com'), 'Email us')->wi
 $repository->saveItem(Item::text('Hours', '<strong>Open</strong> daily')->withPlacement($menu->id, null, 1));
 
 $publisher->unpublishedChanges($menu->id);              // 3
-$publisher->publish($menu->id, $userId, 'First menu');  // a Menu\Revision, now live
+$publisher->publish($menu->id, new PublishedBy($userId, $userName), 'First menu');  // a Menu\Revision, now live
 ```
 
 The site reads only the live revision:

@@ -45,6 +45,25 @@ final class TransactionTest extends TestCase
     }
 
     #[Test]
+    public function aFailureInsideAnotherOfItsOwnRollsBackTheOuterAndKeepsTheFailure(): void
+    {
+        $transaction = new Transaction($this->adapter);
+        $failure     = null;
+        try {
+            $transaction->run(function () use ($transaction): void {
+                $this->repository->saveNavigation(new Navigation('header', 'Header'));
+                $transaction->run(static function (): void {
+                    throw new WorkFailure('The inner work failed');
+                });
+            });
+        } catch (WorkFailure $caught) {
+            $failure = $caught->getMessage();
+        }
+
+        static::assertSame(['The inner work failed', false, false], [$failure, $this->exists('header'), $this->open()]);
+    }
+
+    #[Test]
     #[DataProvider('failureProvider')]
     public function aTransactionThatCannotBeginOrCommitIsAStorageFailure(string $step, Throwable $failure): void
     {

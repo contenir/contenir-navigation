@@ -8,6 +8,7 @@ use Contenir\Navigation\Exception\InvalidItemException;
 use Contenir\Navigation\Exception\NotFoundException;
 use Contenir\Navigation\Exception\StorageException;
 use Contenir\Navigation\Menu\Changes;
+use Contenir\Navigation\Menu\PublishedBy;
 use Contenir\Navigation\Menu\Revision;
 use Contenir\Navigation\Menu\Tree;
 use Contenir\Navigation\Storage\NavigationRepositoryInterface;
@@ -76,14 +77,14 @@ final readonly class Publisher
     }
 
     /**
-     * Makes a menu's draft live as a new revision, with an optional note
-     * saying what changed.
+     * Makes a menu's draft live as a new revision, recording who published
+     * it when the host knows, with an optional note saying what changed.
      *
      * @throws NotFoundException    When there is no such menu.
      * @throws InvalidItemException When the note is longer than 255 characters.
      * @throws StorageException
      */
-    public function publish(int $navigationId, int $publishedBy, ?string $note = null): Revision
+    public function publish(int $navigationId, ?PublishedBy $publishedBy = null, ?string $note = null): Revision
     {
         return $this->transaction->run(
             /**

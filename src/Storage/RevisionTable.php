@@ -8,6 +8,7 @@ use Contenir\Navigation\Exception\InvalidItemException;
 use Contenir\Navigation\Exception\InvalidLinkException;
 use Contenir\Navigation\Exception\NotFoundException;
 use Contenir\Navigation\Exception\StorageException;
+use Contenir\Navigation\Menu\PublishedBy;
 use Contenir\Navigation\Menu\Revision;
 use Contenir\Navigation\Menu\Snapshot;
 use JsonException;
@@ -54,13 +55,27 @@ final readonly class RevisionTable
                 $navigationId,
                 Snapshot::decode($items, $navigationId),
                 $row->time('created'),
-                $row->int('created_by'),
+                self::publishedBy($row),
                 $row->nullableString('note'),
                 $id,
             );
         } catch (JsonException|InvalidItemException|InvalidLinkException $failure) {
             throw StorageException::unreadableRevision($id, $failure->getMessage());
         }
+    }
+
+    /**
+     * Who published the revision, when the host said.
+     *
+     * @throws StorageException
+     * @throws InvalidItemException
+     */
+    private static function publishedBy(Row $row): ?PublishedBy
+    {
+        $id   = $row->nullableString('created_by');
+        $name = $row->nullableString('created_by_name');
+
+        return null === $id || null === $name ? null : new PublishedBy($id, $name);
     }
 
     /**
@@ -81,11 +96,12 @@ final readonly class RevisionTable
             ->sql
             ->insert(self::TABLE)
             ->values([
-                'navigation_id' => $revision->navigationId,
-                'items'         => $items,
-                'note'          => $revision->note,
-                'created'       => DbTime::format($revision->created),
-                'created_by'    => $revision->createdBy,
+                'navigation_id'   => $revision->navigationId,
+                'items'           => $items,
+                'note'            => $revision->note,
+                'created'         => DbTime::format($revision->created),
+                'created_by'      => $revision->publishedBy?->id,
+                'created_by_name' => $revision->publishedBy?->name,
             ]));
 
         return $revision->withId($id);

@@ -19,6 +19,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 - `Html\HtmlSanitiser`, keeping a text item's HTML to a small inline set.
 - `Storage\PhpDbNavigationRepository`: menus, items with moving and deleting, and revisions, each change bumping its
   menu's updated time. `Storage\Transaction` joins a transaction already open on the connection.
+- `Menu\PublishedBy` records who published a revision: their user id, held as text, and their name as it was then.
 - `Publishing\Publisher`: publish a menu's draft as a revision, discard changes, restore a revision, count unpublished
   changes, and read the live menu for the site.
 - `ConfigProvider`, with settings under `contenir_navigation`.

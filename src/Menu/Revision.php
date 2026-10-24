@@ -11,8 +11,8 @@ use function mb_strlen;
 use function trim;
 
 /**
- * A menu as it was published: its whole item tree, an optional note saying
- * what changed, when, and by whom.
+ * A menu as it was published: its whole item tree, when, by whom when the
+ * host knew, and an optional note saying what changed.
  *
  * @api
  */
@@ -31,7 +31,7 @@ final readonly class Revision
         public int $navigationId,
         public array $nodes,
         public DateTimeImmutable $created,
-        public int $createdBy,
+        public ?PublishedBy $publishedBy = null,
         ?string $note = null,
         public ?int $id = null,
     ) {
@@ -45,6 +45,6 @@ final readonly class Revision
 
     public function withId(int $id): self
     {
-        return new self($this->navigationId, $this->nodes, $this->created, $this->createdBy, $this->note, $id);
+        return new self($this->navigationId, $this->nodes, $this->created, $this->publishedBy, $this->note, $id);
     }
 }

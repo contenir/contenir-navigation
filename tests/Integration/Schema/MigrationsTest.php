@@ -57,7 +57,15 @@ final class MigrationsTest extends TestCase
             ],
             'revisions' => [
                 'navigation_revision',
-                ['created', 'created_by', 'items', 'navigation_id', 'navigation_revision_id', 'note'],
+                [
+                    'created',
+                    'created_by',
+                    'created_by_name',
+                    'items',
+                    'navigation_id',
+                    'navigation_revision_id',
+                    'note',
+                ],
             ],
         ];
     }

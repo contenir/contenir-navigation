@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Contenir\Navigation\Tests\Unit\Menu;
 
 use Contenir\Navigation\Exception\InvalidItemException;
+use Contenir\Navigation\Menu\PublishedBy;
 use Contenir\Navigation\Menu\Revision;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Group;
@@ -19,7 +20,7 @@ final class RevisionTest extends TestCase
     #[Test]
     public function aBlankNoteIsNone(): void
     {
-        static::assertNull((new Revision(1, [], new DateTimeImmutable(), 1, '   '))->note);
+        static::assertNull((new Revision(1, [], new DateTimeImmutable(), null, '   '))->note);
     }
 
     #[Test]
@@ -27,7 +28,7 @@ final class RevisionTest extends TestCase
     {
         $note = str_repeat('é', times: 255);
 
-        static::assertSame($note, (new Revision(1, [], new DateTimeImmutable(), 1, " {$note} "))->note);
+        static::assertSame($note, (new Revision(1, [], new DateTimeImmutable(), null, " {$note} "))->note);
     }
 
     #[Test]
@@ -36,7 +37,7 @@ final class RevisionTest extends TestCase
         $this->expectException(InvalidItemException::class);
         $this->expectExceptionMessage('it can be at most 255 characters');
 
-        new Revision(1, [], new DateTimeImmutable(), 1, str_repeat('é', times: 256));
+        new Revision(1, [], new DateTimeImmutable(), null, str_repeat('é', times: 256));
     }
 
     #[Test]
@@ -45,8 +46,8 @@ final class RevisionTest extends TestCase
         $created = new DateTimeImmutable('2026-10-23 09:00:00');
 
         static::assertEquals(
-            new Revision(2, [], $created, 5, 'Added Shop', 8),
-            (new Revision(2, [], $created, 5, 'Added Shop'))->withId(8),
+            new Revision(2, [], $created, new PublishedBy(5, 'Ann Editor'), 'Added Shop', 8),
+            (new Revision(2, [], $created, new PublishedBy(5, 'Ann Editor'), 'Added Shop'))->withId(8),
         );
     }
 }
