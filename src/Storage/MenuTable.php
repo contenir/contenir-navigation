@@ -10,16 +10,19 @@ use Contenir\Navigation\Exception\StorageException;
 use Contenir\Navigation\Menu\Navigation;
 use DateTimeImmutable;
 
-use function sprintf;
-
 /**
  * The navigation table: one row per menu.
  *
  * @internal
+ *
+ * @mago-expect lint:too-many-methods One method per thing the repository does with the menus' rows.
  */
 final readonly class MenuTable
 {
     public const string TABLE = 'navigation';
+
+    /** Menu order, as the Menus screen lists them. */
+    private const array ORDER = ['sequence ASC', 'title ASC', 'navigation_id ASC'];
 
     public function __construct(
         private Database $database,
@@ -54,17 +57,27 @@ final readonly class MenuTable
     }
 
     /**
+     * The live revision of the first published menu with $handle, in menu order.
+     *
      * @throws StorageException
      */
     public function liveRevisionId(string $handle): ?int
     {
-        return $this->database
-            ->row($this->database
+        foreach ($this->database->rows(
+            $this->database
                 ->sql
                 ->select(self::TABLE)
                 ->columns(['navigation_revision_id'])
-                ->where(['handle' => $handle]))
-            ?->nullableInt('navigation_revision_id');
+                ->where(['handle' => $handle])
+                ->order(self::ORDER),
+        ) as $row) {
+            $revisionId = $row->nullableInt('navigation_revision_id');
+            if (null !== $revisionId) {
+                return $revisionId;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -79,13 +92,21 @@ final readonly class MenuTable
     }
 
     /**
+     * The menu the site shows for $handle: the first published one in menu order, or the first of
+     * them when none is published.
+     *
      * @throws StorageException
      */
     public function navigationByHandle(string $handle): ?Navigation
     {
-        $row = $this->database->row($this->database->sql->select(self::TABLE)->where(['handle' => $handle]));
+        $menus = $this->navigationsByHandle($handle);
+        foreach ($menus as $menu) {
+            if (null !== $menu->revisionId) {
+                return $menu;
+            }
+        }
 
-        return null === $row ? null : self::hydrate($row);
+        return $menus[0] ?? null;
     }
 
     /**
@@ -96,15 +117,25 @@ final readonly class MenuTable
     public function navigations(): array
     {
         $menus = [];
+        foreach ($this->database->rows($this->database->sql->select(self::TABLE)->order(self::ORDER)) as $row) {
+            $menus[] = self::hydrate($row);
+        }
+
+        return $menus;
+    }
+
+    /**
+     * Every menu with $handle, in menu order.
+     *
+     * @return list<Navigation>
+     *
+     * @throws StorageException
+     */
+    public function navigationsByHandle(string $handle): array
+    {
+        $menus = [];
         foreach ($this->database->rows(
-            $this->database
-                ->sql
-                ->select(self::TABLE)
-                ->order([
-                    'sequence ASC',
-                    'title ASC',
-                    'navigation_id ASC',
-                ]),
+            $this->database->sql->select(self::TABLE)->where(['handle' => $handle])->order(self::ORDER),
         ) as $row) {
             $menus[] = self::hydrate($row);
         }
@@ -113,20 +144,13 @@ final readonly class MenuTable
     }
 
     /**
-     * @throws InvalidItemException When another menu has its handle.
-     * @throws NotFoundException    When the menu being changed isn't there.
+     * Adds or changes a menu. Its handle may be another menu's too.
+     *
+     * @throws NotFoundException When the menu being changed isn't there.
      * @throws StorageException
      */
     public function save(Navigation $navigation, DateTimeImmutable $now): Navigation
     {
-        $holder = $this->navigationByHandle($navigation->handle);
-        if (null !== $holder && $holder->id !== $navigation->id) {
-            throw InvalidItemException::because(sprintf(
-                'Another menu already has the handle "%s"',
-                $navigation->handle,
-            ));
-        }
-
         $values = [
             'handle'      => $navigation->handle,
             'title'       => $navigation->title,

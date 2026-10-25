@@ -93,19 +93,29 @@ final class InMemoryNavigationRepository implements NavigationRepositoryInterfac
     #[Override]
     public function navigationByHandle(string $handle): ?Navigation
     {
-        foreach ($this->navigations as $navigation) {
-            if ($handle === $navigation->handle) {
-                return $navigation;
+        $menus = $this->navigationsByHandle($handle);
+        foreach ($menus as $menu) {
+            if (null !== $menu->revisionId) {
+                return $menu;
             }
         }
 
-        return null;
+        return $menus[0] ?? null;
     }
 
     #[Override]
     public function navigations(): array
     {
         return array_values($this->navigations);
+    }
+
+    #[Override]
+    public function navigationsByHandle(string $handle): array
+    {
+        return array_values(array_filter(
+            $this->navigations,
+            static fn(Navigation $navigation): bool => $handle === $navigation->handle,
+        ));
     }
 
     #[Override]

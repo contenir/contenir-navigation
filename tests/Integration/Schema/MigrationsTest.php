@@ -15,6 +15,7 @@ use PHPUnit\Framework\TestCase;
 
 use function array_map;
 use function array_values;
+use function in_array;
 use function sort;
 
 #[Group('integration')]
@@ -89,6 +90,20 @@ final class MigrationsTest extends TestCase
     }
 
     #[Test]
+    public function keepsAPlainIndexOnTheHandleSoMenusCanShareOne(): void
+    {
+        $indexes = $this->indexes('navigation');
+
+        static::assertSame(
+            [true, false],
+            [
+                in_array('navigation_lookup', $indexes, strict: true),
+                in_array('navigation_handle', $indexes, strict: true),
+            ],
+        );
+    }
+
+    #[Test]
     public function runningThemAgainChangesNothing(): void
     {
         static::assertSame([], TestDatabase::migrations($this->adapter)->runPending());
@@ -104,5 +119,26 @@ final class MigrationsTest extends TestCase
     protected function tearDown(): void
     {
         $this->tearDownDatabase();
+    }
+
+    /**
+     * The names of $table's indexes, as the database lists them.
+     *
+     * @return list<string>
+     */
+    private function indexes(string $table): array
+    {
+        $mysql = 'MySQL' === $this->adapter->getPlatform()->getName();
+        $rows  = $this->adapter
+            ->executeQuery($this->adapter->prepareQuery(
+                $mysql ? "SHOW INDEX FROM `{$table}`" : "PRAGMA index_list(\"{$table}\")",
+            ))
+            ->getQueryResult()
+            ->toArray();
+
+        return array_values(array_map(
+            static fn(array $row): string => (string) $row[$mysql ? 'Key_name' : 'name'],
+            $rows,
+        ));
     }
 }
