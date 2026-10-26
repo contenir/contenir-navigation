@@ -82,8 +82,7 @@ final class Version20261026000100ShareNavigationHandlesTest extends TestCase
     private function preview(string $platform, bool $unique, bool $lookup): array
     {
         $inspector = $this->createStub(SchemaInspector::class);
-        $inspector
-            ->method('indexExists')
+        $inspector->method('indexExists')
             ->willReturnMap([
                 ['navigation', 'navigation_handle', $unique],
                 ['navigation', 'navigation_lookup', $lookup],
