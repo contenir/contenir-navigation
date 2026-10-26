@@ -141,17 +141,6 @@ final class PhpDbNavigationRepositoryTest extends TestCase
     }
 
     #[Test]
-    public function anotherMenusHandleIsRefused(): void
-    {
-        $this->menu('header');
-
-        $this->expectException(InvalidItemException::class);
-        $this->expectExceptionMessage('Another menu already has the handle "header"');
-
-        $this->repository->saveNavigation(new Navigation('header', 'Second header'));
-    }
-
-    #[Test]
     public function aRevisionIsFoundByItsIdAndKeptToItsMenu(): void
     {
         $header = $this->menu();
@@ -505,6 +494,22 @@ final class PhpDbNavigationRepositoryTest extends TestCase
     }
 
     #[Test]
+    public function menusMayShareAHandle(): void
+    {
+        $this->repository->saveNavigation(new Navigation('header', 'Second header', sequence: 1));
+        $this->repository->saveNavigation(new Navigation('header', 'First header', sequence: 0));
+        $this->repository->saveNavigation(new Navigation('footer', 'Footer'));
+
+        static::assertSame(
+            ['First header', 'Second header'],
+            array_map(
+                static fn(Navigation $menu): string => $menu->title,
+                $this->repository->navigationsByHandle('header'),
+            ),
+        );
+    }
+
+    #[Test]
     public function movingAnItemAlongItsSiblingsReordersThem(): void
     {
         $menu = $this->menu();
@@ -760,6 +765,35 @@ final class PhpDbNavigationRepositoryTest extends TestCase
         );
     }
 
+    #[Test]
+    public function theSiteShowsTheFirstPublishedMenuWithAHandle(): void
+    {
+        $this->repository->saveNavigation(new Navigation('header', 'Draft copy', sequence: 0));
+        $live  = $this->published('Header', sequence: 1);
+        $later = $this->published('Later header', sequence: 2);
+
+        static::assertSame(
+            ['Header', $live, [$live, $later]],
+            [
+                $this->repository->navigationByHandle('header')?->title,
+                $this->repository->liveRevisionId('header'),
+                [$this->repository->navigationByHandle('header')?->revisionId, $later],
+            ],
+        );
+    }
+
+    #[Test]
+    public function withNoneOfThemPublishedTheFirstInOrderIsFoundButNothingIsLive(): void
+    {
+        $this->repository->saveNavigation(new Navigation('header', 'Second', sequence: 1));
+        $this->repository->saveNavigation(new Navigation('header', 'First', sequence: 0));
+
+        static::assertSame(
+            ['First', null],
+            [$this->repository->navigationByHandle('header')?->title, $this->repository->liveRevisionId('header')],
+        );
+    }
+
     #[Override]
     protected function setUp(): void
     {
@@ -782,6 +816,18 @@ final class PhpDbNavigationRepositoryTest extends TestCase
     private function menu(string $handle = 'header'): int
     {
         return (int) $this->repository->saveNavigation(new Navigation($handle, 'Menu'))->id;
+    }
+
+    /**
+     * A header menu titled $title at $sequence, published once; answers its live revision's id.
+     */
+    private function published(string $title, int $sequence): int
+    {
+        $menu     = (int) $this->repository->saveNavigation(new Navigation('header', $title, sequence: $sequence))->id;
+        $revision = (int) $this->repository->addRevision(new Revision($menu, [], $this->clock->now(), null))->id;
+        $this->repository->setLiveRevision($menu, $revision);
+
+        return $revision;
     }
 
     /**

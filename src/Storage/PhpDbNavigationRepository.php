@@ -136,6 +136,12 @@ final readonly class PhpDbNavigationRepository implements NavigationRepositoryIn
     }
 
     #[Override]
+    public function navigationsByHandle(string $handle): array
+    {
+        return $this->menus->navigationsByHandle($handle);
+    }
+
+    #[Override]
     public function replaceItems(int $navigationId, array $nodes): void
     {
         $this->transaction->run(

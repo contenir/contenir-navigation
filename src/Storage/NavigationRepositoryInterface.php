@@ -62,9 +62,9 @@ interface NavigationRepositoryInterface
     public function items(int $navigationId): array;
 
     /**
-     * The id of the revision live for the menu with $handle, or null when
-     * there is no such menu or it has never been published. One small query,
-     * for a site to key its cache on.
+     * The id of the revision live for $handle: that of the first published
+     * menu with it, in menu order; null when no menu with $handle has been
+     * published. One small query, for a site to key its cache on.
      *
      * @throws StorageException
      */
@@ -87,6 +87,10 @@ interface NavigationRepositoryInterface
     public function navigation(int $id): Navigation;
 
     /**
+     * The menu the site shows for $handle: the first published menu with it,
+     * in menu order, or the first of them when none is published; null when
+     * no menu has it.
+     *
      * @throws StorageException
      */
     public function navigationByHandle(string $handle): ?Navigation;
@@ -99,6 +103,16 @@ interface NavigationRepositoryInterface
      * @throws StorageException
      */
     public function navigations(): array;
+
+    /**
+     * Every menu with $handle, in menu order. Menus may share a handle; the
+     * site shows the first published one.
+     *
+     * @return list<Navigation>
+     *
+     * @throws StorageException
+     */
+    public function navigationsByHandle(string $handle): array;
 
     /**
      * Replaces a menu's draft items with $nodes, as discarding changes or
@@ -136,10 +150,9 @@ interface NavigationRepositoryInterface
     public function saveItem(Item $item): Item;
 
     /**
-     * Adds a menu, or saves its changes.
+     * Adds a menu, or saves its changes. Its handle may be another menu's too.
      *
-     * @throws InvalidItemException When another menu already has its handle.
-     * @throws NotFoundException    When the menu being changed isn't there.
+     * @throws NotFoundException When the menu being changed isn't there.
      * @throws StorageException
      */
     public function saveNavigation(Navigation $navigation): Navigation;

@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+Menus may share a handle, so an editor can rename or copy a menu without being refused.
+
+### Changed
+
+- A menu's handle need not be unique. The migration `Version20261026000100ShareNavigationHandles` replaces the unique
+  index on `navigation.handle` with a plain `navigation_lookup` index, and `saveNavigation()` no longer throws when
+  another menu has the handle.
+- `navigationByHandle()` and `liveRevisionId()` answer the menu the site shows for a handle: the first published menu
+  with it, in menu order (sequence, then title). A draft never takes over. With none published, `navigationByHandle()`
+  answers the first in menu order and `liveRevisionId()` null.
+
+### Added
+
+- `NavigationRepositoryInterface::navigationsByHandle()` lists every menu with a handle, in menu order, so the CMS can
+  warn when a handle is shared. Implementations must add it.
+
 ## [0.1.0] - 2026-10-25
 
 ### Added
